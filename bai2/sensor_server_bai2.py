@@ -40,7 +40,7 @@ async def main():
     root = resource.Site()
     sensor = SensorResource()
     root.add_resource(["iot", "lab", "sensor01", "data"], sensor)
-    context = await aiocoap.Context.create_server_context(root)
+    context = await aiocoap.Context.create_server_context(root, bind=("127.0.0.1", 5683))
     update_task = asyncio.create_task(sensor.update_sensor())
 
     print("Sensor CoAP Server started on port 5683")

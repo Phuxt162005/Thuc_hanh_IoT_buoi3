@@ -3,7 +3,7 @@ import asyncio
 import aiocoap 
 from aiocoap.numbers.contentformat import ContentFormat
 
-URI = "coap://localhost:5683/iot/lab/message"
+URI = "coap://127.0.0.1:5683/iot/lab/message"
 
 async def main():
     protocol = await aiocoap.Context.create_client_context()

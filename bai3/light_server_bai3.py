@@ -76,7 +76,7 @@ async def main():
     root = resource.Site()
     light = LightStatusResource()
     root.add_resource(["iot", "lab", "light01", "status"], light)
-    context = await aiocoap.Context.create_server_context(root)
+    context = await aiocoap.Context.create_server_context(root, bind=("127.0.0.1", 5683))
 
     print("CoAP Smart Light Server started...")
     print("Resource: /iot/lab/light01/status")

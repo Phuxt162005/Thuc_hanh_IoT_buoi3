@@ -5,7 +5,7 @@ from datetime import datetime
 
 import aiocoap
 
-URI = "coap://localhost:5683/iot/lab/light01/status"
+URI = "coap://127.0.0.1:5683/iot/lab/light01/status"
 
 def display_state(response, initial=False):
     timestamp = datetime.now().strftime("%H:%M:%S")

@@ -5,7 +5,7 @@ from datetime import datetime
 
 import aiocoap
 
-URI = "coap://localhost:5683/iot/lab/sensor01/data"
+URI = "coap://127.0.0.1:5683/iot/lab/sensor01/data"
 
 async def main():
     protocol = await aiocoap.Context.create_client_context()

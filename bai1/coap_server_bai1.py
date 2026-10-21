@@ -31,8 +31,7 @@ class MessageResource(resource.Resource):
 async def main():
     root = resource.Site()
     root.add_resource(["iot", "lab", "message"], MessageResource())
-
-    context = await aiocoap.Context.create_server_context(root)
+    context = await aiocoap.Context.create_server_context(root, bind=("127.0.0.1", 5683))
 
     print("CoAP Server started on port 5683")
     print("Resource: /iot/lab/message")

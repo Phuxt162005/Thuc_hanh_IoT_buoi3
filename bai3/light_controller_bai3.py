@@ -5,7 +5,7 @@ import json
 import aiocoap
 from aiocoap.numbers.contentformat import ContentFormat
 
-URI = "coap://localhost:5683/iot/lab/light01/status"
+URI = "coap://127.0.0.1:5683/iot/lab/light01/status"
 
 async def main():
     protocol = await aiocoap.Context.create_client_context()
