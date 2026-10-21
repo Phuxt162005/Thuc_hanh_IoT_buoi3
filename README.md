@@ -58,14 +58,6 @@ CoAP_Lab/
 │   ├── light_server_bai3.py
 │   ├── light_controller_bai3.py
 │   └── light_monitor_bai3.py
-├── evidence/
-│   ├── bai1_client.png
-│   ├── bai1_server.png
-│   ├── bai2_client.png
-│   ├── bai2_server.png
-│   ├── bai3_controller.png
-│   ├── bai3_monitor.png
-│   └── bai3_server.png
 └── README.md
 ```
 
@@ -73,10 +65,10 @@ Thư mục `evidence/` dùng để lưu ảnh chụp kết quả chạy thực t
 
 ## 5. Địa chỉ tài nguyên CoAP
 
-| Bài | URI | Phương thức | Mục đích |
-|---|---|---|---|
-| Bài 1 | `coap://127.0.0.1:5683/iot/lab/message` | GET, POST | Nhận lời chào từ Server và gửi thông điệp sinh viên |
-| Bài 2 | `coap://127.0.0.1:5683/iot/lab/sensor01/data` | GET | Truy vấn dữ liệu nhiệt độ và độ ẩm |
+| Bài   | URI                                            | Phương thức       | Mục đích                                                  |
+| ----- | ---------------------------------------------- | ----------------- | --------------------------------------------------------- |
+| Bài 1 | `coap://127.0.0.1:5683/iot/lab/message`        | GET, POST         | Nhận lời chào từ Server và gửi thông điệp sinh viên       |
+| Bài 2 | `coap://127.0.0.1:5683/iot/lab/sensor01/data`  | GET               | Truy vấn dữ liệu nhiệt độ và độ ẩm                        |
 | Bài 3 | `coap://127.0.0.1:5683/iot/lab/light01/status` | GET, PUT, Observe | Đọc trạng thái, điều khiển đèn và nhận thông báo thay đổi |
 
 ## 6. Cách chạy từng bài
@@ -227,5 +219,5 @@ Các chương trình đã được chạy trên máy local; kết quả đối c
 
 ## 9. Tài liệu tham khảo
 
-- Tài liệu buổi thực hành: *Lập trình Python với giao thức CoAP*.
+- Tài liệu buổi thực hành: _Lập trình Python với giao thức CoAP_.
 - Tài liệu thư viện aiocoap: <https://aiocoap.readthedocs.io/>.
