@@ -1,95 +1,86 @@
+"""Observe cho light01, fan01, pump01; nhật ký mọi thay đổi trạng thái."""
 
 import asyncio
 import json
 
 import aiocoap
 import aiocoap.resource as resource
-from aiocoap.numbers.contentformat import ContentFormat
+
+from lab_common import Recorder, device_ids, error_response, json_response, parser, run, timestamp
+
 
 class LightStatusResource(resource.ObservableResource):
-    def __init__(self):
+    def __init__(self, device_id, recorder):
         super().__init__()
-        self.device_id = "light01"
+        self.device_id = device_id
         self.status = "OFF"
+        self.changed_at = timestamp()
+        self.recorder = recorder
         self.observer_count = 0
 
-    def get_payload(self):
-        data = {"device_id": self.device_id, "status": self.status}
-        return json.dumps(data).encode("utf-8")
-
     async def render_get(self, request):
-        return aiocoap.Message(
-            code=aiocoap.CONTENT,
-            payload=self.get_payload(),
-            content_format=ContentFormat.JSON
-        )
+        return json_response({"device_id": self.device_id, "status": self.status, "timestamp": self.changed_at})
 
     async def render_put(self, request):
+        if request.opt.content_format != 50:
+            return aiocoap.Message(code=aiocoap.UNSUPPORTED_CONTENT_FORMAT, payload=b"Can application/json")
         try:
             data = json.loads(request.payload.decode("utf-8"))
-        except (json.JSONDecodeError, UnicodeDecodeError):
-            return aiocoap.Message(code=aiocoap.BAD_REQUEST, payload=b"Payload JSON khong hop le")
-
+        except (UnicodeDecodeError, json.JSONDecodeError):
+            return error_response("Payload JSON khong hop le")
         if not isinstance(data, dict):
-            return aiocoap.Message(code=aiocoap.BAD_REQUEST, payload=b"Payload phai la JSON object")
-
+            return error_response("Payload phai la JSON object")
         if data.get("device_id") != self.device_id:
-            return aiocoap.Message(code=aiocoap.BAD_REQUEST, payload=b"device_id khong hop le")
-
+            return error_response("device_id khong hop le")
         command = data.get("command")
-        if not isinstance(command, str):
-            return aiocoap.Message(code=aiocoap.BAD_REQUEST, payload=b"Command khong hop le")
-
+        if not isinstance(command, str) or command.strip().upper() not in ("ON", "OFF"):
+            return error_response("Chi chap nhan lenh ON hoac OFF")
         command = command.strip().upper()
-        if command not in ("ON", "OFF"):
-            return aiocoap.Message(code=aiocoap.BAD_REQUEST, payload=b"Chi chap nhan lenh ON hoac OFF")
-
-        print("\nPUT request received:")
-        print("Device:", self.device_id)
-        print("Command:", command)
         old_status = self.status
+        print(f"\nPUT request received:\nDevice: {self.device_id}\nCommand: {command}")
         if command != old_status:
+            changed_at = timestamp()
+            try:
+                self.recorder.write({"timestamp": changed_at, "device_id": self.device_id,
+                                     "old_status": old_status, "status": command})
+            except (OSError, ValueError) as error:
+                print("Loi ghi nhat ky:", error)
+                return aiocoap.Message(code=aiocoap.INTERNAL_SERVER_ERROR, payload=b"Khong ghi duoc nhat ky")
             self.status = command
-            print(f"Light state changed: {old_status} -> {self.status}")
+            self.changed_at = changed_at
+            print(f"Light state changed: {old_status} -> {command}")
             self.updated_state()
-            print("Notify observers:", self.status)
+            print(f"Notify observers: {self.device_id} {command}; count={self.observer_count}")
         else:
             print("Light state unchanged:", self.status)
-        message = (
-            "Da bat den light01"
-            if self.status == "ON"
-            else "Da tat den light01"
-        )
-
-        return aiocoap.Message(
-            code=aiocoap.CHANGED,
-            payload=message.encode("utf-8"),
-            content_format=ContentFormat.TEXT
-        )
+        text = f"Da {'bat' if command == 'ON' else 'tat'} thiet bi {self.device_id}"
+        return aiocoap.Message(code=aiocoap.CHANGED, payload=text.encode("utf-8"), content_format=0)
 
     def update_observation_count(self, count):
+        print(f"Observe count: {self.device_id} = {count}")
         if count > self.observer_count:
-            print("\nNew Observe registration received")
+            print("New Observe registration received:", self.device_id)
         self.observer_count = count
 
-async def main():
-    root = resource.Site()
-    light = LightStatusResource()
-    root.add_resource(["iot", "lab", "light01", "status"], light)
-    context = await aiocoap.Context.create_server_context(root, bind=("127.0.0.1", 5683))
 
-    print("CoAP Smart Light Server started...")
-    print("Resource: /iot/lab/light01/status")
-    print("Initial state: OFF")
-    print("Nhan Ctrl+C de dung Server.")
-
+async def main(args):
+    recorder = Recorder(args.log, ["timestamp", "device_id", "old_status", "status"])
+    site = resource.Site()
+    for device in args.devices:
+        site.add_resource(["iot", "lab", device, "status"], LightStatusResource(device, recorder))
+    context = await aiocoap.Context.create_server_context(site, bind=(args.host, args.port), transports=["simplesocketserver"])
+    print(f"CoAP Smart Light Server started on {args.host}:{args.port}")
+    for device in args.devices:
+        print(f"Resource: /iot/lab/{device}/status; Initial state: OFF")
+    print("Nhat ky:", args.log)
     try:
-        await asyncio.get_running_loop().create_future()
+        await asyncio.Future()
     finally:
         await context.shutdown()
 
+
 if __name__ == "__main__":
-    try:
-        asyncio.run(main())
-    except KeyboardInterrupt:
-        print("\nDa dung Smart Light Server.")
+    options = parser("Bai 3 - Smart Device Server", server=True)
+    options.add_argument("--devices", type=device_ids, default=["light01", "fan01", "pump01"])
+    options.add_argument("--log", default="outputs/device-events.json", help="Nhat ky .json hoac .csv")
+    run(main, options.parse_args())

@@ -1,66 +1,43 @@
+"""Controller tương tác: ON/OFF/STATUS/EXIT; NON là tùy chọn."""
 
-import asyncio
 import json
 
 import aiocoap
-from aiocoap.numbers.contentformat import ContentFormat
 
-URI = "coap://127.0.0.1:5683/iot/lab/light01/status"
+from lab_common import exchange, keyboard, message, parser, run, show_response, single_device
 
-async def main():
-    protocol = await aiocoap.Context.create_client_context()
 
-    print("Light Controller Client started.")
-    print("URI:", URI)
+async def main(args):
+    context = await aiocoap.Context.create_client_context(transports=["simple6"])
+    print(f"Controller: {args.device}; type={'NON' if args.non else 'CON'}")
     print("Lenh: ON / OFF / STATUS / EXIT")
-
+    print("Lenh khac EXIT/STATUS duoc gui PUT de thu server tu choi lenh sai.")
     try:
         while True:
-            command = await asyncio.get_running_loop().run_in_executor(None, lambda: input("\nNhap lenh (ON/OFF/STATUS/EXIT): ").strip().upper())
-            if command == "EXIT":
+            command = await keyboard("\nNhap lenh (ON/OFF/STATUS/EXIT): ")
+            if command is None or command.upper() == "EXIT":
                 break
-            if command == "STATUS":
-                request = aiocoap.Message(code=aiocoap.GET, uri=URI)
-                print("\nSending GET request...")
-            elif command in ("ON", "OFF"):
-                payload = {"device_id": "light01", "command": command}
-                request = aiocoap.Message(
-                    code=aiocoap.PUT,
-                    uri=URI,
-                    payload=json.dumps(payload).encode("utf-8"),
-                    content_format=ContentFormat.JSON
-                )
-                print("\nSending PUT request...")
-
-            else:
-                print("Lenh khong hop le. Hay nhap ON, OFF, STATUS hoac EXIT.")
+            command = command.upper()
+            if not command:
+                print("Lenh khong duoc rong.")
                 continue
+            path = f"iot/lab/{args.device}/status"
+            if command == "STATUS":
+                request = message(args, aiocoap.GET, path)
+            else:
+                payload = json.dumps({"device_id": args.device, "command": command}).encode("utf-8")
+                request = message(args, aiocoap.PUT, path, payload=payload, content_format=50)
+            print("Sending", request.code, "request...")
             try:
-                response = await protocol.request(request).response
-                print("Response Code:", response.code)
-
-                if response.code.is_successful():
-                    text = response.payload.decode("utf-8")
-                    if command == "STATUS":
-                        try:
-                            data = json.loads(text)
-                            print("Response:")
-                            print(json.dumps(data, ensure_ascii=False))
-                        except json.JSONDecodeError:
-                            print("Payload:", text)
-                    else:
-                        print(text)
-                else:
-                    print("Server error:", response.payload.decode("utf-8", errors="replace"))
-
+                show_response(await exchange(context, request, args.timeout))
             except Exception as error:
-                print("Loi giao tiep CoAP:", error)
+                print(f"Loi giao tiep/timeout ({args.timeout:g}s): {type(error).__name__}: {error}")
     finally:
-        await protocol.shutdown()
-        print("Da dong Light Controller Client.")
+        await context.shutdown()
+        print("Da dong Controller.")
+
 
 if __name__ == "__main__":
-    try:
-        asyncio.run(main())
-    except KeyboardInterrupt:
-        print("\nDa dung Controller Client.")
+    options = parser("Bai 3 - Controller")
+    options.add_argument("--device", type=single_device, default="light01")
+    run(main, options.parse_args())
